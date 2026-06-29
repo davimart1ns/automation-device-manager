@@ -1,9 +1,6 @@
 package main;
 
-import model.Atuador;
-import model.Dispositivo;
-import model.Sensor;
-import repository.DispositivoDAO;
+
 import repository.FabricaConexao;
 import view.TelaPrincipal;
 

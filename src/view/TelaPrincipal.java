@@ -25,6 +25,7 @@ public class TelaPrincipal extends JFrame{
     private JTable tabela;
     private DefaultTableModel modeloTabela;
     private DispositivoDAO dao;
+    private int idDispositivoEmEdicao = -1;
 
     public TelaPrincipal() {
         dao = new DispositivoDAO();
@@ -42,6 +43,9 @@ public class TelaPrincipal extends JFrame{
 
         // carrega os dados iniciais do SQLite para a tabela
         atualizarTabela();
+
+        // inicializa os ouvintes de eventos dos botoes
+        configurarAcoesBotoes();
     }
 
     // metodo que desenha o formulário na parte superior
@@ -182,6 +186,146 @@ public class TelaPrincipal extends JFrame{
                     extra2
             });
         }
+    }
+
+    // metodo que centraliza todos os eventos de clique da tela
+    private void configurarAcoesBotoes() {
+
+        // ação do botão salvar
+        btnSalvar.addActionListener(e -> {
+            String nome = txtNome.getText().trim();
+            String ip = txtIp.getText().trim();
+            boolean status = chkStatus.isSelected();
+            String tipo = cbTipo.getSelectedItem().toString();
+            String extra1 = txtCampoExtra1.getText().trim();
+            String extra2 = txtCampoExtra2.getText().trim();
+
+            // validação simples de campos vazios
+            if (nome.isEmpty() || ip.isEmpty() || extra1.isEmpty() || extra2.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Por favor, preencha todos os campos!", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            Dispositivo dispositivo;
+
+
+            int idAtual = idDispositivoEmEdicao;
+
+            if("SENSOR".equals(tipo)) {
+                // instancia o Sensor (Herança)
+                dispositivo = new Sensor(idAtual == -1 ? 0 : idAtual, nome, ip, status, extra1, extra2);
+            } else {
+                // instancia o Atuador (Herança)
+                dispositivo = new Atuador(idAtual == -1 ? 0 : idAtual, nome, ip, status, extra1, extra2);
+            }
+
+            // aqui acontece a decisão
+            if (idDispositivoEmEdicao == -1) {
+                dao.cadastrar(dispositivo);
+                JOptionPane.showMessageDialog(this, "Dispositivo cadastrado com sucesso!");
+            } else {
+                dao.atualizar(dispositivo);
+                JOptionPane.showMessageDialog(this, "Dispositivo atualizado com sucesso!");
+            }
+
+            // primeiro limpamos a seleção da tabela para evitar loops de eventos indesejados
+            tabela.clearSelection();
+
+            // limpa o formulario e atualiza o JTable
+            limparFormulario();
+            atualizarTabela();
+        });
+
+        // ação do botão excluir
+        btnExcluir.addActionListener(e -> {
+            int linhaSelecionada = tabela.getSelectedRow();
+
+            if(linhaSelecionada == -1) {
+                JOptionPane.showMessageDialog(this, "Selecione um dispositivo na tabela para excluir.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // pega o ID da primeira coluna (indice 0) da linha selecionada
+            int id = (int) modeloTabela.getValueAt(linhaSelecionada, 0);
+            String nome = (String) modeloTabela.getValueAt(linhaSelecionada, 2);
+
+            int confirmacao = JOptionPane.showConfirmDialog(this,
+                    "Tem certeza que deseja excluir o dispositivo [" + nome + "]?",
+                    "Confimar Exclusão", JOptionPane.YES_NO_OPTION);
+
+            if (confirmacao == JOptionPane.YES_NO_OPTION) {
+                dao.excluir(id);
+                atualizarTabela();
+                JOptionPane.showMessageDialog(this, "Dispositivo removido com sucesso!");
+            }
+        });
+
+        // ação do botão testar
+        btnTestar.addActionListener(e -> {
+            int linhaSelecionada = tabela.getSelectedRow();
+
+            if(linhaSelecionada == -1) {
+                JOptionPane.showMessageDialog(this, "Selecione um dispositivo na tabela para testar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int id = (int) modeloTabela.getValueAt(linhaSelecionada, 0);
+
+            // buscamos a lista atual de dispositivos para achar o objeto correto pelo ID
+            List<Dispositivo> lista = dao.listarTodos();
+            for (Dispositivo d : lista) {
+                if(d.getId() == id) {
+                    // POLIMORFISMO: o java chama o metodo executarTeste() especifico da classe filha
+                    // sem que a interface precise saber se ele é um Sensor ou um Atuador!
+                    String resultadoTeste = d.executarTeste();
+
+                    JOptionPane.showMessageDialog(this, resultadoTeste, "Teste de Dispositivo", JOptionPane.INFORMATION_MESSAGE);
+                    break;
+                }
+            }
+        });
+
+        // ação ao clicar em uma linha da tabela (preparar para edição)
+        tabela.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int linhaSelecionada = tabela.getSelectedRow();
+
+                // Essa checagem é Vital! Só preenche se realmente houver uma linha clicada
+                if (linhaSelecionada != -1) {
+                    idDispositivoEmEdicao = (int) modeloTabela.getValueAt(linhaSelecionada, 0);
+                    String tipo = (String) modeloTabela.getValueAt(linhaSelecionada, 1);
+                    String nome = (String) modeloTabela.getValueAt(linhaSelecionada, 2);
+                    String ip = (String) modeloTabela.getValueAt(linhaSelecionada, 3);
+                    boolean status = modeloTabela.getValueAt(linhaSelecionada, 4).equals("Ativo");
+                    String extra1 = (String) modeloTabela.getValueAt(linhaSelecionada, 5);
+                    String extra2 = (String) modeloTabela.getValueAt(linhaSelecionada, 6);
+
+                    cbTipo.setSelectedItem(tipo);
+                    txtNome.setText(nome);
+                    txtIp.setText(ip);
+                    chkStatus.setSelected(status);
+                    txtCampoExtra1.setText(extra1);
+                    txtCampoExtra2.setText(extra2);
+
+                    btnSalvar.setText("Confirmar Alteração");
+                }
+            }
+        });
+    }
+
+    // metodo utilitario para limpar os campos apos o cadastro
+    private void limparFormulario() {
+        txtNome.setText("");
+        txtIp.setText("");
+        txtCampoExtra1.setText("");
+        txtCampoExtra2.setText("");
+        chkStatus.setSelected(true);
+        cbTipo.setSelectedIndex(0);
+
+        // resetando o estado de edição
+        idDispositivoEmEdicao = -1;
+        btnSalvar.setText("Salvar Dispositivo");
+        tabela.clearSelection();
     }
 
 }

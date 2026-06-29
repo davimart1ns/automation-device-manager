@@ -106,7 +106,9 @@ public class DispositivoDAO {
                 stmt.setString(7, a.getTensaoOperacao());
             }
 
+            //  o ID vai para a última posição (índice 9 agora, já que adicionamos o tipo_dispositivo)
             stmt.setInt(8, d.getId());
+
             stmt.executeUpdate();
             System.out.println("Dispositivo atualizado com sucesso!");
         } catch (SQLException e) {
