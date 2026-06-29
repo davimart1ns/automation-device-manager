@@ -20,7 +20,7 @@ public class FabricaConexao {
         String sql = "CREATE TABLE IF NOT EXISTS dispositivos (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                 "nome TEXT NOT NULL," +
-                "ip_address TEXT NOT NULL," + // <--- CORRIGIDO: Adicionada a vírgula aqui
+                "ip_address TEXT NOT NULL," +
                 "status INTEGER NOT NULL," +  // 0 para inativo, 1 para ativo
                 "tipo_dispositivo TEXT NOT NULL," +
                 // campos especificos do Sensor
@@ -28,7 +28,7 @@ public class FabricaConexao {
                 "unidade_medida TEXT," +
                 // campos especificos do atuador
                 "tipo_comando TEXT," +
-                "tensao_operacao TEXT" +     // <--- CORRIGIDO: Removida a vírgula sobressalente aqui
+                "tensao_operacao TEXT" +
                 ");";
 
         try (Connection conn = getConexao(); Statement stmt = conn.createStatement()) {

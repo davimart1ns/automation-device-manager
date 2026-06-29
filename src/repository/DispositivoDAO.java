@@ -81,36 +81,48 @@ public class DispositivoDAO {
 
     // UPDATE
     public void atualizar(Dispositivo d) {
+        // Adicionamos "tipo_dispositivo = ?" na Query para atualizar caso o usuário mude o tipo na tela
         String sql = "UPDATE dispositivos SET nome = ?, ip_address = ?, status = ?, " +
-                    "tipo_sinal = ?, unidade_medida = ?, tipo_comando = ?, tensao_operacao = ? " +
-                    "WHERE id = ?";
+                "tipo_dispositivo = ?, tipo_sinal = ?, unidade_medida = ?, " +
+                "tipo_comando = ?, tensao_operacao = ? WHERE id = ?";
 
         try (Connection conn = FabricaConexao.getConexao();
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
+            // campos comuns a todos os dispositivos
             stmt.setString(1, d.getNome());
             stmt.setString(2, d.getIpAddress());
             stmt.setInt(3, d.isStatus() ? 1 : 0);
 
+            // verificação exata do tipo para evitar parâmetros vazios
             if (d instanceof Sensor) {
                 Sensor s = (Sensor) d;
-                stmt.setString(4, s.getTipoSinal());
-                stmt.setString(5, s.getUnidadeMedida());
-                stmt.setNull(6, Types.VARCHAR);
-                stmt.setNull(7, Types.VARCHAR);
+                stmt.setString(4, "SENSOR");
+                stmt.setString(5, s.getTipoSinal());
+                stmt.setString(6, s.getUnidadeMedida());
+                stmt.setNull(7, java.sql.Types.VARCHAR); // limpa os campos de atuador
+                stmt.setNull(8, java.sql.Types.VARCHAR);
             } else if (d instanceof Atuador) {
                 Atuador a = (Atuador) d;
-                stmt.setNull(4, Types.VARCHAR);
-                stmt.setNull(5, Types.VARCHAR);
-                stmt.setString(6, a.getTipoComando());
-                stmt.setString(7, a.getTensaoOperacao());
+                stmt.setString(4, "ATUADOR");
+                stmt.setNull(5, java.sql.Types.VARCHAR); // limpa os campos de sensor
+                stmt.setNull(6, java.sql.Types.VARCHAR);
+                stmt.setString(7, a.getTipoComando());
+                stmt.setString(8, a.getTensaoOperacao());
+            } else {
+                // caso de segurança: se for a classe mãe pura (não deve acontecer, mas evita travar)
+                stmt.setString(4, "DESCONHECIDO");
+                stmt.setNull(5, java.sql.Types.VARCHAR);
+                stmt.setNull(6, java.sql.Types.VARCHAR);
+                stmt.setNull(7, java.sql.Types.VARCHAR);
+                stmt.setNull(8, java.sql.Types.VARCHAR);
             }
 
-            //  o ID vai para a última posição (índice 9 agora, já que adicionamos o tipo_dispositivo)
-            stmt.setInt(8, d.getId());
+            //  o id vai para a última posição (índice 9 agora, já que adicionamos o tipo_dispositivo)
+            stmt.setInt(9, d.getId());
 
             stmt.executeUpdate();
-            System.out.println("Dispositivo atualizado com sucesso!");
+            System.out.println("Dispositivo atualizado com sucesso no banco!");
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar o dispositivo: " + e.getMessage());
         }
